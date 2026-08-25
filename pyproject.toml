@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "point-of-care-connectivity-engine"
+version = "2.0.0"
+description = "POC-Sentinel: Autonomous Point-of-Care Testing (POCT) QC & Operator Operator Auditor"
+readme = "README.md"
+authors = [{ name = "Dr. Abu Suraih Sakhri", email = "abusuraih@example.com" }]
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+point-of-care-connectivity-engine = "point_of_care_connectivity_agent.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/abusuraihsakhri/point-of-care-connectivity-engine"
+Repository = "https://github.com/abusuraihsakhri/point-of-care-connectivity-engine.git"
