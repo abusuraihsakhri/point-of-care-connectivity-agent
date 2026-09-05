@@ -23,6 +23,37 @@ def test_phi_guard_enforcement():
     PHIGuard.assert_no_phi("Analytical assay specimen KEY-001 optimal")
 
 
+def test_phi_redaction():
+    # Test SSN redaction
+    redacted = PHIGuard.redact_phi("Patient SSN: 123-45-6789")
+    assert "123-45-6789" not in redacted
+    assert "[REDACTED_IDENTIFIER]" in redacted
+
+    # Test MRN redaction
+    redacted = PHIGuard.redact_phi("MRN-12345678 recorded")
+    assert "12345678" not in redacted
+    assert "[REDACTED_IDENTIFIER]" in redacted
+
+    # Test email redaction
+    redacted = PHIGuard.redact_phi("Contact user@example.com for details")
+    assert "user@example.com" not in redacted
+    assert "[REDACTED_IDENTIFIER]" in redacted
+
+    # Test phone number redaction
+    redacted = PHIGuard.redact_phi("Call (555) 123-4567")
+    assert "(555) 123-4567" not in redacted
+
+    # Clean text passes through unchanged
+    clean = "Analytical assay specimen KEY-001 optimal"
+    assert PHIGuard.redact_phi(clean) == clean
+
+    # Empty string handling
+    assert PHIGuard.redact_phi("") == ""
+
+    # None-like handling (empty string)
+    PHIGuard.assert_no_phi("")
+
+
 def test_specialized_workers():
     # Worker 1: QC Invariant
     p1 = SystemTaskPayload(task_id="T1", target_identifier="KEY-01", primary_metric=35.0)
@@ -63,3 +94,47 @@ def test_supervisor_consensus_and_audit():
     assert main(["audit", "--task-id", "CLI-TEST-01"]) == 0
     assert main(["chat", "Explain", "specifications"]) == 0
     assert main(["verify-audit"]) == 0
+
+
+def test_audit_trail_integrity():
+    """Verify that the audit trail maintains cryptographic integrity."""
+    # Create a fresh audit trail for testing
+    from agents.base import AuditTrail
+    trail = AuditTrail(secret_key="test-key-for-integrity-verification")
+
+    # Log some entries
+    trail.log("test_actor", "test_tier", "TEST_EVENT", {"data": "test1"})
+    trail.log("test_actor", "test_tier", "TEST_EVENT", {"data": "test2"})
+    trail.log("test_actor", "test_tier", "TEST_EVENT", {"data": "test3"})
+
+    # Verify integrity
+    assert trail.verify_integrity() is True
+    assert len(trail.get_trail()) == 3
+
+    # Verify chain linkage
+    logs = trail.get_trail()
+    assert logs[0]["prev_hash"] == "GENESIS_BLOCK_0000000000000000"
+    assert logs[1]["prev_hash"] == logs[0]["current_hash"]
+    assert logs[2]["prev_hash"] == logs[1]["current_hash"]
+
+
+def test_edge_case_metrics():
+    """Test metrics collection with edge cases."""
+    from agents.metrics import SystemMetricsCollector
+    metrics = SystemMetricsCollector()
+
+    # Record various urgency levels
+    metrics.record_task("CRITICAL_STAT_PANIC", 0.5)
+    metrics.record_task("ELEVATED_RISK", 0.3)
+    metrics.record_task("ROUTINE", 0.1)
+
+    # Verify counts
+    assert metrics.tasks_total == 3
+    assert metrics.critical_alerts_total == 1
+    assert metrics.elevated_alerts_total == 1
+    assert metrics.routine_tasks_total == 1
+
+    # Test Prometheus export
+    prometheus_output = metrics.export_prometheus_text()
+    assert "system_tasks_total" in prometheus_output
+    assert "alerts_triggered_total" in prometheus_output

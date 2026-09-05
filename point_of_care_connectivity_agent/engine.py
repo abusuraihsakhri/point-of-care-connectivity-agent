@@ -3,9 +3,7 @@ Clinical Algorithmic Engine & Guideline Rules for POC-Sentinel: Autonomous Point
 Domain: Laboratory Medicine
 Standard: CLSI EP28-A3 & Westgard Multi-Rule QC
 """
-import math
-from typing import Dict, Any, List, Optional
-from .models import ClinicalCasePayload, AgentAlert, UrgencyLevel, ClinicalIntegrityStatus
+from typing import Dict, Any, Optional
 
 
 class ClinicalDomainEngine:

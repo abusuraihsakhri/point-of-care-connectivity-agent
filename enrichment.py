@@ -3,10 +3,8 @@ Enrichment Feature Implementation for point-of-care-connectivity-agent.
 Generated based on domain-specific requirements in specifications.
 """
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 import datetime
-import math
-import json
 
 # =============================================================================
 # 1. POCT DEVICE FIRMWARE VERSION AND COMPATIBILITY TRACKING
