@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "point-of-care-connectivity-engine"
+name = "point-of-care-connectivity-agent"
 version = "2.0.0"
-description = "POC-Sentinel: Autonomous Point-of-Care Testing (POCT) QC & Operator Operator Auditor"
+description = "Local example-rule evaluator for point-of-care testing measurements"
 readme = "README.md"
 authors = [{ name = "Dr. Abu Suraih Sakhri", email = "abusuraih@example.com" }]
 license = { text = "MIT" }
@@ -13,15 +13,31 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Topic :: Scientific/Engineering :: Medical Science Apps.",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 requires-python = ">=3.9"
-dependencies = []
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.29,<1",
+    "pydantic>=2.5,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "httpx>=0.27,<1"]
 
 [project.scripts]
+point-of-care-connectivity-agent = "cli:main"
 point-of-care-connectivity-engine = "point_of_care_connectivity_agent.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/abusuraihsakhri/point-of-care-connectivity-engine"
-Repository = "https://github.com/abusuraihsakhri/point-of-care-connectivity-engine.git"
+Homepage = "https://github.com/abusuraihsakhri/point-of-care-connectivity-agent"
+Repository = "https://github.com/abusuraihsakhri/point-of-care-connectivity-agent.git"
+
+[tool.setuptools]
+py-modules = ["cli", "poct_sentinel", "enrichment", "simulator"]
+
+[tool.setuptools.packages.find]
+include = ["agents*", "point_of_care_connectivity_agent*"]
+
+[tool.setuptools.data-files]
+"share/point-of-care-connectivity-agent" = ["web/index.html"]
