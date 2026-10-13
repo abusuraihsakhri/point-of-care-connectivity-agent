@@ -1,17 +1,14 @@
-version: '3.8'
-
 services:
-  point-of-care-connectivity-engine:
+  point-of-care-connectivity-agent:
     build: .
-    container_name: point-of-care-connectivity-engine
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
-      - AUDIT_SECRET_KEY=point-of-care-connectivity-engine-prod-audit-key-2026
-      - MODEL_PROVIDER=mock
+      AUDIT_SECRET_KEY: ${AUDIT_SECRET_KEY:?Set a unique AUDIT_SECRET_KEY in your environment}
+      MODEL_PROVIDER: mock
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
       interval: 30s
       timeout: 5s
       retries: 3

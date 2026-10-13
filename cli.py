@@ -11,6 +11,25 @@ from agents.base import AuditLogger
 supervisor = SystemSupervisor(model_provider="mock")
 
 
+def parse_csv_bool(value):
+    """Accept explicit boolean CSV values; non-empty strings are not automatically True."""
+    if isinstance(value, bool):
+        return value
+    normalized = str(value or "").strip().lower()
+    if normalized in {"true", "yes", "y", "1", "on"}:
+        return True
+    if normalized in {"false", "no", "n", "0", "off", ""}:
+        return False
+    raise ValueError("Invalid boolean CSV value (expected true/false or 1/0)")
+
+
+def safe_csv_cell(value):
+    """Prevent spreadsheet formula execution when CSV output is opened in Excel."""
+    if isinstance(value, str) and value.lstrip().startswith(("=", "+", "-", "@")):
+        return "'" + value
+    return value
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="point-of-care-connectivity-agent", description="Point Of Care Connectivity Agent")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -76,7 +95,7 @@ def main(argv=None):
         trail = AuditLogger.get_trail()
         valid = AuditLogger.verify_integrity()
         print(f"Audit Trail Blocks: {len(trail)} | Cryptographic Integrity Verified: {valid}")
-        return 0
+        return 0 if valid else 1
 
     if args.command == "batch":
         with open(args.input, mode="r", encoding="utf-8-sig") as f:
@@ -84,19 +103,28 @@ def main(argv=None):
             fieldnames = list(reader.fieldnames or [])
             rows = list(reader)
 
-        out_fields = fieldnames + ["overall_urgency", "integrity_status", "total_alerts", "audit_hash"]
+        if not fieldnames:
+            raise ValueError("CSV input must have a header row")
+        out_fields = list(dict.fromkeys(
+            fieldnames + ["overall_urgency", "integrity_status", "total_alerts", "audit_hash"]
+        ))
         out_rows = []
-        for r in rows:
-            payload = SystemTaskPayload(
-                task_id=r.get("task_id", "TASK-01"),
-                target_identifier=r.get("target_identifier", "TARGET-01"),
-                primary_metric=float(r.get("primary_metric", 15.0)),
-                secondary_metric=float(r.get("secondary_metric", 5.0)),
-                status_descriptor=r.get("status_descriptor", "NOMINAL"),
-                is_critical_flag=bool(r.get("is_critical_flag", False)),
-            )
-            dossier = supervisor.process_task(payload)
-            row_dict = dict(r)
+        for line_number, r in enumerate(rows, start=2):
+            try:
+                payload = SystemTaskPayload(
+                    task_id=r.get("task_id") or r.get("case_id") or "TASK-01",
+                    target_identifier=r.get("target_identifier") or r.get("patient_synthetic_id") or "TARGET-01",
+                    primary_metric=float(r.get("primary_metric") or r.get("metric_primary") or 15.0),
+                    secondary_metric=float(r.get("secondary_metric") or r.get("metric_secondary") or 5.0),
+                    status_descriptor=r.get("status_descriptor") or r.get("status_flag") or "NOMINAL",
+                    is_critical_flag=parse_csv_bool(
+                        r.get("is_critical_flag", r.get("is_stat", False))
+                    ),
+                )
+                dossier = supervisor.process_task(payload)
+            except (ValueError, TypeError) as exc:
+                raise ValueError(f"Invalid CSV record on line {line_number}: {exc.__class__.__name__}") from None
+            row_dict = {k: safe_csv_cell(v) for k, v in r.items()}
             row_dict["overall_urgency"] = dossier.overall_urgency.value
             row_dict["integrity_status"] = dossier.integrity_status.value
             row_dict["total_alerts"] = dossier.total_alerts

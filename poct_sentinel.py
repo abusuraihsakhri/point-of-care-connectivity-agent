@@ -17,6 +17,17 @@ from enum import Enum
 from typing import Dict, Any, List, Optional
 
 
+def _csv_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    normalized = str(value or "").strip().lower()
+    if normalized in {"true", "yes", "y", "1", "on"}:
+        return True
+    if normalized in {"false", "no", "n", "0", "off", ""}:
+        return False
+    raise ValueError("Invalid boolean flag; use true/false or 1/0")
+
+
 class Severity(str, Enum):
     INFO = "INFO"
     ADVISORY = "ADVISORY"
@@ -88,7 +99,7 @@ class DeviceLockoutMonitorAgent:
     """Specialized Sub-Agent 2 for point-of-care-connectivity-agent"""
     def evaluate(self, payload: Dict[str, Any]) -> List[AgentAlert]:
         alerts = []
-        is_critical = bool(payload.get("critical_flag", False))
+        is_critical = _csv_bool(payload.get("critical_flag", False))
         val2 = float(payload.get("metric_secondary", 5.0))
         if is_critical or val2 > 12.0:
             alerts.append(
@@ -142,7 +153,7 @@ class POCTCoordinator:
         critical_count = sum(1 for a in all_alerts if a.severity == Severity.CRITICAL)
         warning_count = sum(1 for a in all_alerts if a.severity == Severity.WARNING)
 
-        overall_status = "CRITICAL_ACTION_REQUIRED" if critical_count > 0 else ("WARNING_ACTIVE" if warning_count > 0 else "CONCORDANT_NORMAL")
+        overall_status = "CRITICAL_ACTION_REQUIRED" if critical_count > 0 else ("WARNING_ACTIVE" if all_alerts else "CONCORDANT_NORMAL")
 
         dossier = {
             "system": "point-of-care-connectivity-agent",
@@ -274,7 +285,12 @@ def main(argv=None):
         out_fields = fieldnames + ["overall_status", "total_alerts", "critical_count", "consensus_summary"]
         out_rows = []
         for r in rows:
-            dossier = coordinator.audit_case(dict(r))
+            record = dict(r)
+            if "critical_flag" not in record and "is_stat" in record:
+                record["critical_flag"] = record["is_stat"]
+            if "status_text" not in record and "status_flag" in record:
+                record["status_text"] = record["status_flag"]
+            dossier = coordinator.audit_case(record)
             row_dict = dict(r)
             row_dict["overall_status"] = dossier["overall_status"]
             row_dict["total_alerts"] = dossier["total_alerts"]

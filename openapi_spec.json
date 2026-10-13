@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Point Of Care Connectivity Engine API",
-    "description": "Enterprise Distributed Component Platform (Clinical & Cryptographic AI) adhering to CAP / CLSI / NIST Standards.",
+    "title": "Point of Care Connectivity Agent API",
+    "description": "Local demonstration endpoints for synthetic measurements; illustrative rules only, not validated for clinical use.",
     "version": "3.0.0-ENTERPRISE",
     "contact": {
       "name": "Dr. Abu Suraih Sakhri",
@@ -10,6 +10,16 @@
     }
   },
   "paths": {
+    "/": {
+      "get": {
+        "summary": "Serve local operations console",
+        "responses": {
+          "200": {
+            "description": "HTML operations console"
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health and metadata check",
@@ -22,10 +32,10 @@
     },
     "/metrics": {
       "get": {
-        "summary": "Prometheus operational metrics",
+        "summary": "Get in-memory JSON counters and audit-chain verification",
         "responses": {
           "200": {
-            "description": "Prometheus text metrics"
+            "description": "JSON operational metrics"
           }
         }
       }
@@ -69,14 +79,14 @@
         },
         "responses": {
           "200": {
-            "description": "Consensus dossier with HMAC signature"
+            "description": "Illustrative consensus dossier and HMAC hash"
           }
         }
       }
     },
     "/api/chat": {
       "post": {
-        "summary": "Air-gapped supervisory conversational assistant",
+        "summary": "Deterministic local mock response",
         "requestBody": {
           "content": {
             "application/json": {
@@ -103,10 +113,20 @@
     },
     "/api/audit/logs": {
       "get": {
-        "summary": "Retrieve and cryptographically verify HMAC audit trail",
+        "summary": "Get in-memory audit snapshots and cryptographic integrity result",
         "responses": {
           "200": {
-            "description": "Cryptographic audit trail"
+            "description": "Ephemeral audit entries and integrity status"
+          }
+        }
+      }
+    },
+    "/metrics/prometheus": {
+      "get": {
+        "summary": "Get Prometheus-format task counters",
+        "responses": {
+          "200": {
+            "description": "Prometheus text exposition format"
           }
         }
       }

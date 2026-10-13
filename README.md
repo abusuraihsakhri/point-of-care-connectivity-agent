@@ -1,191 +1,100 @@
-# Point Of Care Connectivity Agent
+# Point of Care Connectivity Agent
 
-> **Domain:** Clinical Decision Support & Biomedical Computing  
-> **Reference Guidelines & Standards:** CAP / CLSI / ISO Standards
+A local Python prototype for evaluating **synthetic point-of-care testing (POCT) measurements** against example rules, producing alerts and an in-memory HMAC-SHA256 audit chain. It provides a command-line interface, REST API, and browser-based operations console.
 
-<div align="center">
+**Research/development use only.** The thresholds are illustrative, not validated analyte-specific QC limits. This project does **not** connect to glucometers, blood-gas analyzers, LIS systems, or real operator-certification databases. It is not a clinical decision-support device and must not be used with patient data or for patient care.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi&logoColor=white)
-![Audit Trail](https://img.shields.io/badge/Audit-HMAC--SHA256_Tamper--Evident-brightgreen.svg)
-![Zero-PHI Guard](https://img.shields.io/badge/Guard-Zero--PHI_Outbound-blue.svg)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)
+## Features
 
-</div>
+- Evaluate primary values above **25**, secondary values above **12**, explicit critical flags, and discordance descriptors with three example workers.
+- Inspect a structured dossier with urgency, integrity status, rule-based alerts, and audit hash.
+- Process individual requests or CSV batches; interrogate the local mock chat endpoint.
+- Check per-entry HMAC-SHA256 audit signatures and chain links while the process is running.
+- Use a responsive local operations console with actual API connectivity, metrics, validation and error states.
+- Run automated regression tests for inputs, CSV flags, signing, and API behavior.
 
----
+The repository also retains alternative historical implementations in `poct_sentinel.py` and `point_of_care_connectivity_agent/`; their rule sets and CLI interfaces are distinct from the primary `agents/` engine.
 
-## 📖 What It Does
+## Run locally
 
-**Point Of Care Connectivity Agent** is an advanced analytical and computational platform implementing Decentralized POCT Glucometer / Blood Gas QC Supervisor. It surveils decentralized glucometers, blood gas carts, and rapid PCR instruments across wards for operator certification, QC lockouts, and calibration.
-
----
-
-## ⚙️ Key Capabilities & Algorithmic Modules
-
-### 🔬 Core Algorithmic & Evaluation Engines
-
-- **`Severity`** — Severity evaluation enum with levels: INFO, ADVISORY, WARNING, CRITICAL
-- **`DomainKnowledgeRegistry`**: Enterprise domain rules, guideline matrices, and evidence benchmarks
-- **`AgentAlert`** — Alert evaluation and state verification module
-- **`OperatorCertificationAgent`**: Sub-Agent for operator certification verification
-- **`DeviceLockoutMonitorAgent`**: Sub-Agent for device lockout monitoring
-- **`InterInstrumentBiasAgent`**: Sub-Agent for inter-instrument bias detection
-
-### 🏗️ Architecture Components
-
-- **`agents/base.py`** — Enterprise Security, PHI Outbound Guard, and HMAC-SHA256 Audit Trail
-- **`agents/workers.py`** — Specialized domain worker agents (QC, Safety, Protocol Conformance)
-- **`agents/supervisor.py`** — Master supervisor orchestrator
-- **`agents/api.py`** — FastAPI REST API server
-- **`agents/llm_factory.py`** — LLM provider factory (supports mock, Ollama, Claude, OpenAI)
-- **`agents/metrics.py`** — Prometheus operational metrics exporter
-- **`agents/learning.py`** — Bayesian calibration and active learning feedback engine
-
----
-
-## 💻 Installation
+Requires Python 3.10 or newer.
 
 ```bash
-# Clone the repository
 git clone https://github.com/abusuraihsakhri/point-of-care-connectivity-agent.git
 cd point-of-care-connectivity-agent
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Generate a strong key for this session. Set a stable private key for repeated runs.
+export AUDIT_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')"
 
-# Install dependencies
-pip install fastapi uvicorn pydantic pytest
-
-# Optional: Set audit secret key for persistent audit integrity
-export AUDIT_SECRET_KEY="your-secure-key-here"  # On Windows: set AUDIT_SECRET_KEY=...
+point-of-care-connectivity-agent serve --host 127.0.0.1 --port 8000
 ```
 
-See `.env.example` for all configuration options.
+Open **http://127.0.0.1:8000/** for the operations console, or **http://127.0.0.1:8000/docs** for interactive API documentation. Browser and API requests use the same origin. The console requires a running Python server and cannot operate as a standalone GitHub Pages application.
 
----
+Windows PowerShell: activate the virtual environment with `.venv\Scripts\Activate.ps1` and set `$env:AUDIT_SECRET_KEY` to a private random key.
 
-## 💻 CLI Quickstart & Usage
-
-### 1. Single Task Evaluation
-```bash
-python cli.py audit --task-id TASK-2026-001 --target KEY-TARGET-01 --primary 28.5 --secondary 14.2
-```
-
-### 2. System Query (Chat)
-```bash
-python cli.py chat "What is the system status?"
-```
-
-### 3. Batch Processing
-```bash
-python cli.py batch -i sample.csv -o results.csv
-```
-
-### 4. Verify Audit Trail Integrity
-```bash
-python cli.py verify-audit
-```
-
-### 5. Launch REST API Server
-```bash
-python cli.py serve --host 127.0.0.1 --port 8000
-```
-
-### Parameter Reference
-| Argument | Description | Default |
-|:---------|:------------|:--------|
-| `--task-id` | Unique task/case identifier | TASK-2026-001 |
-| `--target` | Target entity or specimen identifier | KEY-TARGET-01 |
-| `--primary` | Primary measurement value (float) | 28.5 |
-| `--secondary` | Secondary measurement value (float) | 14.2 |
-| `--critical` | Flag for critical/emergency escalation | False |
-| `--status` | Status descriptor (NOMINAL, DISCORDANT, etc.) | DISCORDANT |
-
----
-
-## 🛡️ Security & Enterprise Architecture
-
-* **Zero-PHI Outbound Interceptor:** Active regex inspection blocking SSNs, MRNs, phone numbers, emails, and patient identifiers
-* **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation
-* **PHI Redaction:** Automatic redaction of sensitive identifiers in output
-* **Audit Secret Key:** Configurable via `AUDIT_SECRET_KEY` environment variable (random key generated if not set)
-
----
-
-## 🧪 Testing & Verification
-
-Run the automated test suite:
+### CLI examples
 
 ```bash
-pytest -v
+point-of-care-connectivity-agent audit --task-id SYNTH-001 --target DEVICE-DEMO --primary 28.5 --secondary 14.2
+point-of-care-connectivity-agent chat "What is the status?"
+point-of-care-connectivity-agent batch -i sample.csv -o results.csv
+point-of-care-connectivity-agent verify-audit
 ```
 
-Execute high-throughput batch simulation benchmarks:
+CSV accepts `task_id`/`case_id`, `target_identifier`/`patient_synthetic_id`, `primary_metric`/`metric_primary`, `secondary_metric`/`metric_secondary`, `is_critical_flag`/`is_stat`, and `status_descriptor`/`status_flag`. Boolean columns accept true/false, yes/no, and 1/0. Output is escaped to reduce spreadsheet formula-injection risk.
+
+The legacy command `point-of-care-connectivity-engine` remains available for the alternative `point_of_care_connectivity_agent` CLI.
+
+## REST API
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/` | Operations console |
+| GET | `/health` | Server health |
+| GET | `/metrics` | JSON activity metrics |
+| GET | `/metrics/prometheus` | Prometheus-format counters |
+| POST | `/api/audit` | Evaluate a synthetic task |
+| POST | `/api/chat` | Local deterministic mock response |
+| GET | `/api/audit/logs` | In-memory signed audit entries and integrity check |
+
+For example:
 
 ```bash
-python simulator.py --tasks 1000 --concurrency 8
+curl -sS http://127.0.0.1:8000/api/audit \
+  -H "Content-Type: application/json" \
+  -d '{"task_id":"SYNTH-01","target_identifier":"DEVICE-01","primary_metric":27,"secondary_metric":5,"status_descriptor":"NOMINAL","is_critical_flag":false}'
 ```
 
----
+## Security and limitations
 
-## 🐳 Container Deployment
+- **Synthetic inputs only.** A regex-based identifier guard blocks some recognizable MRNs, SSNs, contact details, and names. This is not complete de-identification or HIPAA compliance.
+- The HMAC key is read from `AUDIT_SECRET_KEY`; without it, the process generates a temporary key and emits a warning. Audit records, counters, and dossiers are held **only in memory** and are lost on restart. The audit chain is tamper-evident within the running process, not a durable or externally anchored ledger.
+- There is **no API authentication, authorization, TLS termination, or persistent database**. Bind to loopback only unless you add an appropriate secured reverse proxy and authentication. Never expose the API or logs directly on the public internet.
+- The chat response is a deterministic mock, not a clinical-language model. No third-party services are required for the operations console.
+- The sample thresholds and recommendation texts are development examples; clinical guidelines and instrument interoperability are not implemented or verified.
+
+## Tests and Docker
 
 ```bash
-docker build -t point-of-care-connectivity-agent .
-docker run -p 8000:8000 -e AUDIT_SECRET_KEY=your-key point-of-care-connectivity-agent
+python -m pytest -q
+python -m compileall -q agents point_of_care_connectivity_agent cli.py poct_sentinel.py enrichment.py
 ```
 
-Or using Docker Compose:
+Docker Compose reads `AUDIT_SECRET_KEY` from the environment and binds the published port to `127.0.0.1`:
 
 ```bash
-docker-compose up -d
+export AUDIT_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+docker compose up --build
 ```
 
----
+The Docker image installs the package from `pyproject.toml`. CI runs the Python test suite on supported Python versions.
 
-## 📊 API Endpoints
+## Technology and license
 
-| Method | Endpoint | Description |
-|:-------|:---------|:------------|
-| GET | `/health` | Health check |
-| GET | `/metrics` | Prometheus metrics |
-| POST | `/api/audit` | Submit task for evaluation |
-| POST | `/api/chat` | Query supervisory assistant |
-| GET | `/api/audit/logs` | Retrieve and verify audit trail |
+Python, Pydantic 2, FastAPI, Uvicorn, standard-library HMAC-SHA256, and plain HTML/CSS/JavaScript. The console works in current desktop and mobile browsers with JavaScript enabled, when served through the local API.
 
----
-
-## 📁 Project Structure
-
-```
-point-of-care-connectivity-agent/
-├── agents/                 # Core agent modules
-│   ├── base.py            # Security, PHI Guard, Audit Trail
-│   ├── supervisor.py      # Supervisor orchestrator
-│   ├── workers.py         # Specialized worker agents
-│   ├── models.py          # Pydantic data models
-│   ├── api.py             # FastAPI REST server
-│   ├── llm_factory.py     # LLM provider factory
-│   ├── metrics.py         # Prometheus metrics
-│   ├── learning.py        # Bayesian calibration engine
-│   └── streamer.py        # WebSocket telemetry
-├── tests/                 # Test suite
-├── web/                   # Web operations console
-├── cli.py                 # Command-line interface
-├── poct_sentinel.py       # Legacy POCT sentinel module
-├── enrichment.py          # Enrichment feature engines
-├── simulator.py           # High-throughput simulation
-├── Dockerfile             # Container build
-├── docker-compose.yml     # Container orchestration
-├── pyproject.toml         # Project configuration
-└── .env.example           # Environment configuration template
-```
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
+MIT license — see [LICENSE](LICENSE).
