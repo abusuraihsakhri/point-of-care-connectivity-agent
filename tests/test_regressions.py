@@ -66,9 +66,9 @@ def test_csv_batch_supports_sample_headers_and_false_string(tmp_path):
     src = tmp_path / "in.csv"
     dst = tmp_path / "out.csv"
     src.write_text(
-        "case_id,patient_synthetic_id,metric_primary,metric_secondary,is_stat,status_flag\\n"
-        "SYNTH-1,KEY-1,10,4,False,NOMINAL\\n"
-        "SYNTH-2,KEY-2,10,4,True,NOMINAL\\n",
+        "case_id,patient_synthetic_id,metric_primary,metric_secondary,is_stat,status_flag\n"
+        "SYNTH-1,KEY-1,10,4,False,NOMINAL\n"
+        "SYNTH-2,KEY-2,10,4,True,NOMINAL\n",
         encoding="utf-8",
     )
     assert main(["batch", "-i", str(src), "-o", str(dst)]) == 0
