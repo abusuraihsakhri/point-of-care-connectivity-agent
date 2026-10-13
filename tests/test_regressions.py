@@ -117,3 +117,16 @@ def test_api_health_console_validation_and_metrics():
     })
     assert rejected.status_code == 422
     assert client.post("/api/chat", json={"query": "test@example.com"}).status_code == 422
+
+def test_unimplemented_provider_is_not_silently_mocked():
+    from agents.llm_factory import LLMFactory
+    with pytest.raises(ValueError, match="not implemented"):
+        LLMFactory.create("openai")
+    with pytest.raises(ValueError, match="not implemented"):
+        LLMFactory.create("ollama")
+
+
+def test_legacy_string_false_is_not_an_emergency():
+    from poct_sentinel import DeviceLockoutMonitorAgent
+    agent = DeviceLockoutMonitorAgent()
+    assert agent.evaluate({"metric_secondary": 2.0, "critical_flag": "False"}) == []
