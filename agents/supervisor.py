@@ -3,8 +3,11 @@ Supervisor Orchestrator & Operations Intelligence for Point Of Care Connectivity
 Domain: Clinical & Biomedical AI
 """
 import uuid
+import json
+import time
 from typing import Dict, Any, List, Optional
-from .base import AuditLogger, ActionExecutor, PHIGuard
+from .base import AuditLogger, PHIGuard, SecurityException
+from .metrics import GLOBAL_METRICS
 from .models import SystemTaskPayload, AgentAlert, ConsensusDossier, UrgencyLevel, SystemIntegrityStatus
 from .workers import InvariantQCWorker, SafetyEscalationWorker, ProtocolConformanceWorker
 from .llm_factory import LLMFactory
@@ -21,10 +24,15 @@ class SystemSupervisor:
         self.dossier_registry: Dict[str, ConsensusDossier] = {}
 
     def process_task(self, payload: SystemTaskPayload, actor: str = "SystemSupervisor") -> ConsensusDossier:
-        # Zero-PHI outbound validation
-        PHIGuard.assert_no_phi(payload.task_id)
-        PHIGuard.assert_no_phi(payload.target_identifier)
-        PHIGuard.assert_no_phi(payload.status_descriptor)
+        # Reject recognizable identifiers in every nested input, including metadata.
+        # This regex guard is a risk-reduction measure, not PHI de-identification.
+        started = time.perf_counter()
+        try:
+            PHIGuard.assert_no_phi(json.dumps(payload.model_dump(mode="json"), ensure_ascii=False))
+            PHIGuard.assert_no_phi(actor)
+        except SecurityException:
+            GLOBAL_METRICS.record_phi_block()
+            raise
 
         # Multi-worker evaluations
         all_alerts: List[AgentAlert] = []
@@ -71,6 +79,7 @@ class SystemSupervisor:
         )
 
         self.dossier_registry[dossier.dossier_id] = dossier
+        GLOBAL_METRICS.record_task(overall_urgency.value, time.perf_counter() - started)
         return dossier
 
     def query_supervisory_chat(self, query: str) -> str:
