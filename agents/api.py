@@ -2,6 +2,7 @@
 FastAPI REST API Server for Point Of Care Connectivity Agent.
 """
 from pathlib import Path
+import sys
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel, Field
@@ -31,6 +32,8 @@ def health():
 @app.get("/")
 def operations_console():
     page = Path(__file__).resolve().parent.parent / "web" / "index.html"
+    if not page.is_file():
+        page = Path(sys.prefix) / "share" / "point-of-care-connectivity-agent" / "index.html"
     if not page.is_file():
         raise HTTPException(status_code=404, detail="Operations console is unavailable")
     return FileResponse(page, media_type="text/html", headers={"Cache-Control": "no-store"})
